@@ -168,11 +168,7 @@ pub contract SwirlMomentSBT: NonFungibleToken {
 
         // withdraw removes an NFT from the collection and moves it to the caller
         pub fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
-            let token <- self.ownedNFTs.remove(key: withdrawID) ?? panic("missing NFT")
-
-            emit Withdraw(id: token.id, from: self.owner?.address)
-
-            return <-token
+            panic("soulbound; SBT is not transferable")
         }
 
         // deposit takes an NFT and adds it to the collections dictionary
