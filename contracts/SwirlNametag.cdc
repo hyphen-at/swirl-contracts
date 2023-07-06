@@ -10,7 +10,6 @@ pub contract SwirlNametag: NonFungibleToken {
 
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
-    pub let MinterStoragePath: StoragePath
     pub let ProviderPrivatePath: PrivatePath
 
     pub struct SocialHandle {
@@ -45,18 +44,6 @@ pub contract SwirlNametag: NonFungibleToken {
         }
     }
 
-    pub resource Minter {
-        pub fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, profile: Profile) {
-            // create a new NFT
-            var newNFT <- create NFT(
-                id: SwirlNametag.totalSupply + 1,
-                profile: profile
-            )
-            recipient.deposit(token: <-newNFT)
-            SwirlNametag.totalSupply = SwirlNametag.totalSupply + 1
-        }
-    }
-
     pub resource NFT: NonFungibleToken.INFT, MetadataViews.Resolver {
         pub let id: UInt64
         pub let profile: Profile
@@ -82,13 +69,6 @@ pub contract SwirlNametag: NonFungibleToken {
             return "Swirl Nametag: ".concat(self.profile.nickname)
         }
 
-        /// Function that resolve the given GameMetadataView
-        ///
-        /// @param view: The Type of GameMetadataView to resolve
-        ///
-        /// @return The resolved GameMetadataView for this NFT with this NFT's
-        /// metadata or nil if none exists
-        ///
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
                 case Type<Profile>():
@@ -127,7 +107,7 @@ pub contract SwirlNametag: NonFungibleToken {
                         mediaType: "image/png"
                     )
                     return MetadataViews.NFTCollectionDisplay(
-                        name: "Swirl Moment",
+                        name: "Swirl Nametag",
                         description: "The moment you met someone at IRL, saved on your wallet as SBT.",
                         externalURL: MetadataViews.ExternalURL("https://hyphen.at/"),
                         squareImage: media,
@@ -217,14 +197,19 @@ pub contract SwirlNametag: NonFungibleToken {
         }
     }
 
-
     // public function that anyone can call to create a new empty collection
     pub fun createEmptyCollection(): @NonFungibleToken.Collection {
         return <- create Collection()
     }
 
-    pub fun createMinter(): @Minter {
-        return <- create Minter()
+    pub fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, profile: Profile) {
+        // create a new NFT
+        var newNFT <- create NFT(
+            id: SwirlNametag.totalSupply + 1,
+            profile: profile
+        )
+        recipient.deposit(token: <-newNFT)
+        SwirlNametag.totalSupply = SwirlNametag.totalSupply + 1
     }
 
     init() {
@@ -232,7 +217,6 @@ pub contract SwirlNametag: NonFungibleToken {
 
         self.CollectionStoragePath = /storage/SwirlNametagCollection
         self.CollectionPublicPath = /public/SwirlNametagCollection
-        self.MinterStoragePath = /storage/SwirlNametagMinter
         self.ProviderPrivatePath = /private/SwirlNFTCollectionProvider
 
         // Create a Collection resource and save it to storage
@@ -243,9 +227,6 @@ pub contract SwirlNametag: NonFungibleToken {
             self.CollectionPublicPath,
             target: self.CollectionStoragePath
         )
-
-        let minter <- create Minter()
-        self.account.save(<-minter, to: self.MinterStoragePath)
 
         emit ContractInitialized()
     }
