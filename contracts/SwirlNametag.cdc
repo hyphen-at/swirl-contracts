@@ -1,7 +1,7 @@
 import NonFungibleToken from "./utility/NonFungibleToken.cdc"
 import MetadataViews from "./utility/MetadataViews.cdc"
 
-pub contract SwirlMomentSBT: NonFungibleToken {
+pub contract SwirlNametag: NonFungibleToken {
     pub var totalSupply: UInt64
 
     pub event ContractInitialized()
@@ -13,55 +13,64 @@ pub contract SwirlMomentSBT: NonFungibleToken {
     pub let MinterStoragePath: StoragePath
     pub let ProviderPrivatePath: PrivatePath
 
-    pub struct Person {
-        pub let name: String
-        pub let address: Address
-        pub let profileJSON: String
-        pub let metLocationLat: Fix64
-        pub let metLocationLng: Fix64
+    pub struct SocialHandle {
+        pub let channel: String
+        pub let handle: String
 
-        init(name: String, address: Address, profileJSON: String, metLocationLat: Fix64, metLocationLng: Fix64) {
-            self.name = name
-            self.address = address
-            self.profileJSON = profileJSON
-            self.metLocationLat = metLocationLat
-            self.metLocationLng = metLocationLng
+        init(channel: String, handle: String) {
+            self.channel = channel
+            self.handle = handle
         }
     }
 
-    pub struct SwirlMomentSBTMintData {
-        pub let id: UInt64
-        pub let description: String
-        pub let thumbnail: String
-        pub let persons: [Person]
+    pub struct Profile {
+        pub let nickname: String
+        pub let profileImage: String
+        pub let keywords: [String]
+        pub let color: String
+        pub let socialHandles: [SocialHandle]
 
-        init(id: UInt64, description: String, thumbnail: String, persons: [Person]) {
-            self.id = id
-            self.description = description
-            self.thumbnail = thumbnail
-            self.persons = persons
+        init(
+            nickname: String,
+            profileImage: String,
+            keywords: [String],
+            color: String,
+            socialHandles: [SocialHandle]
+        ) {
+            self.nickname = nickname
+            self.profileImage = profileImage
+            self.keywords = keywords
+            self.color = color
+            self.socialHandles = socialHandles
+        }
+    }
+
+    pub resource Minter {
+        pub fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, profile: Profile) {
+            // create a new NFT
+            var newNFT <- create NFT(
+                id: SwirlNametag.totalSupply + 1,
+                profile: profile
+            )
+            recipient.deposit(token: <-newNFT)
+            SwirlNametag.totalSupply = SwirlNametag.totalSupply + 1
         }
     }
 
     pub resource NFT: NonFungibleToken.INFT, MetadataViews.Resolver {
         pub let id: UInt64
-        pub let description: String
-        pub let thumbnail: String
-        pub let persons: [Person]
+        pub let profile: Profile
 
-        init(id: UInt64, description: String, thumbnail: String, persons: [Person]) {
+        init(id: UInt64, profile: Profile) {
             self.id = id
-            self.description = description
-            self.thumbnail = thumbnail
-            self.persons = persons
+            self.profile = profile
         }
 
         pub fun getViews(): [Type] {
             let views: [Type] = [
-                    Type<SwirlMomentSBTMintData>(),
+                    Type<Profile>(),
                     Type<MetadataViews.Display>(),
                     Type<MetadataViews.Serial>(),
-                    Type<MetadataViews.ExternalURL>(),
                     Type<MetadataViews.NFTCollectionData>(),
                     Type<MetadataViews.NFTCollectionDisplay>(),
                     Type<MetadataViews.Traits>()
@@ -70,10 +79,7 @@ pub contract SwirlMomentSBT: NonFungibleToken {
         }
 
         pub fun name(): String {
-            return "Swirl: "
-                .concat(self.persons[0].name)
-                .concat(" <> ")
-                .concat(self.persons[1].name)
+            return "Swirl Nametag: ".concat(self.profile.nickname)
         }
 
         /// Function that resolve the given GameMetadataView
@@ -85,46 +91,39 @@ pub contract SwirlMomentSBT: NonFungibleToken {
         ///
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
-                case Type<SwirlMomentSBTMintData>():
-                    return SwirlMomentSBTMintData(
-                        id: self.id,
-                        description: self.description,
-                        thumbnail: self.thumbnail,
-                        persons: self.persons
-                    )
+                case Type<Profile>():
+                    return self.profile
 
                 case Type<MetadataViews.Display>():
                     return MetadataViews.Display(
                         name: self.name(),
-                        description: self.description,
-                        thumbnail: MetadataViews.HTTPFile(url: self.thumbnail),
+                        description: "Swirl, the new way to meet degens IRL.",
+                        thumbnail: MetadataViews.HTTPFile(url: self.profile.profileImage)
                     )
                 case Type<MetadataViews.Serial>():
                     return MetadataViews.Serial(
                         self.id
                     )
-                case Type<MetadataViews.ExternalURL>():
-                    return MetadataViews.ExternalURL("https://api.hyphen.at/art/v1/".concat(self.id.toString()))
                 case Type<MetadataViews.NFTCollectionData>():
                     return MetadataViews.NFTCollectionData(
-                        storagePath: SwirlMomentSBT.CollectionStoragePath,
-                        publicPath: SwirlMomentSBT.CollectionPublicPath,
-                        providerPath: SwirlMomentSBT.ProviderPrivatePath,
-                        publicCollection: Type<&SwirlMomentSBT.Collection{SwirlMomentSBT.SwirlMomentSBTCollectionPublic}>(),
-                        publicLinkedType: Type<&SwirlMomentSBT.Collection{SwirlMomentSBT.SwirlMomentSBTCollectionPublic, NonFungibleToken.CollectionPublic, NonFungibleToken.Receiver, MetadataViews.ResolverCollection}>(),
-                        providerLinkedType: Type<&SwirlMomentSBT.Collection{SwirlMomentSBT.SwirlMomentSBTCollectionPublic, NonFungibleToken.CollectionPublic, NonFungibleToken.Provider, MetadataViews.ResolverCollection}>(),
+                        storagePath: SwirlNametag.CollectionStoragePath,
+                        publicPath: SwirlNametag.CollectionPublicPath,
+                        providerPath: SwirlNametag.ProviderPrivatePath,
+                        publicCollection: Type<&SwirlNametag.Collection{SwirlNametag.SwirlNametagCollectionPublic}>(),
+                        publicLinkedType: Type<&SwirlNametag.Collection{SwirlNametag.SwirlNametagCollectionPublic, NonFungibleToken.CollectionPublic, NonFungibleToken.Receiver, MetadataViews.ResolverCollection}>(),
+                        providerLinkedType: Type<&SwirlNametag.Collection{SwirlNametag.SwirlNametagCollectionPublic, NonFungibleToken.CollectionPublic, NonFungibleToken.Provider, MetadataViews.ResolverCollection}>(),
                         createEmptyCollectionFunction: (fun (): @NonFungibleToken.Collection {
-                            return <-SwirlMomentSBT.createEmptyCollection()
+                            return <-SwirlNametag.createEmptyCollection()
                         })
                     )
                 case Type<MetadataViews.NFTCollectionDisplay>():
                     let media = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.thumbnail),
+                        file: MetadataViews.HTTPFile(url: self.profile.profileImage),
                         mediaType: "image/png"
                     )
 
                     let bannerMedia = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.thumbnail),
+                        file: MetadataViews.HTTPFile(url: self.profile.profileImage),
                         mediaType: "image/png"
                     )
                     return MetadataViews.NFTCollectionDisplay(
@@ -145,19 +144,19 @@ pub contract SwirlMomentSBT: NonFungibleToken {
         }
     }
 
-    pub resource interface SwirlMomentSBTCollectionPublic {
+    pub resource interface SwirlNametagCollectionPublic {
         pub fun deposit(token: @NonFungibleToken.NFT)
         pub fun getIDs(): [UInt64]
         pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
-        pub fun borrowSwirlMomentSBT(id: UInt64): &SwirlMomentSBT.NFT? {
+        pub fun borrowSwirlNametag(id: UInt64): &SwirlNametag.NFT? {
             post {
                 (result == nil) || (result?.id == id):
-                    "Cannot borrow SwirlMomentSBT reference: the ID of the returned reference is incorrect"
+                    "Cannot borrow SwirlNametag reference: the ID of the returned reference is incorrect"
             }
         }
     }
 
-    pub resource Collection: SwirlMomentSBTCollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic, MetadataViews.ResolverCollection {
+    pub resource Collection: SwirlNametagCollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic, MetadataViews.ResolverCollection {
         // dictionary of NFT conforming tokens
         // NFT is a resource type with an `UInt64` ID field
         pub var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
@@ -174,7 +173,7 @@ pub contract SwirlMomentSBT: NonFungibleToken {
         // deposit takes an NFT and adds it to the collections dictionary
         // and adds the ID to the id array
         pub fun deposit(token: @NonFungibleToken.NFT) {
-            let token <- token as! @SwirlMomentSBT.NFT
+            let token <- token as! @SwirlNametag.NFT
 
             let id: UInt64 = token.id
 
@@ -197,11 +196,11 @@ pub contract SwirlMomentSBT: NonFungibleToken {
             return (&self.ownedNFTs[id] as &NonFungibleToken.NFT?)!
         }
 
-        pub fun borrowSwirlMomentSBT(id: UInt64): &SwirlMomentSBT.NFT? {
+        pub fun borrowSwirlNametag(id: UInt64): &SwirlNametag.NFT? {
             if self.ownedNFTs[id] != nil {
                 // Create an authorized reference to allow downcasting
                 let ref = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
-                return ref as! &SwirlMomentSBT.NFT
+                return ref as! &SwirlNametag.NFT
             }
 
             return nil
@@ -209,8 +208,8 @@ pub contract SwirlMomentSBT: NonFungibleToken {
 
         pub fun borrowViewResolver(id: UInt64): &AnyResource{MetadataViews.Resolver} {
             let nft = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
-            let SwirlMomentSBTNFT = nft as! &SwirlMomentSBT.NFT
-            return SwirlMomentSBTNFT as &AnyResource{MetadataViews.Resolver}
+            let SwirlNametagNFT = nft as! &SwirlNametag.NFT
+            return SwirlNametagNFT as &AnyResource{MetadataViews.Resolver}
         }
 
         destroy() {
@@ -218,25 +217,6 @@ pub contract SwirlMomentSBT: NonFungibleToken {
         }
     }
 
-    pub resource Minter {
-        pub fun mintNFT(
-            recipient: &{NonFungibleToken.CollectionPublic},
-            id: UInt64,
-            description: String,
-            thumbnail: String,
-            persons: [Person]
-        ) {
-            // create a new NFT
-            var newNFT <- create NFT(
-                id: id,
-                description: description,
-                thumbnail: thumbnail,
-                persons: persons,
-            )
-            recipient.deposit(token: <-newNFT)
-            SwirlMomentSBT.totalSupply = SwirlMomentSBT.totalSupply + UInt64(1)
-        }
-    }
 
     // public function that anyone can call to create a new empty collection
     pub fun createEmptyCollection(): @NonFungibleToken.Collection {
@@ -250,16 +230,16 @@ pub contract SwirlMomentSBT: NonFungibleToken {
     init() {
         self.totalSupply = 0
 
-        self.CollectionStoragePath = /storage/SwirlMomentSBTCollection
-        self.CollectionPublicPath = /public/SwirlMomentSBTCollection
-        self.MinterStoragePath = /storage/SwirlMomentSBTMinter
+        self.CollectionStoragePath = /storage/SwirlNametagCollection
+        self.CollectionPublicPath = /public/SwirlNametagCollection
+        self.MinterStoragePath = /storage/SwirlNametagMinter
         self.ProviderPrivatePath = /private/SwirlNFTCollectionProvider
 
         // Create a Collection resource and save it to storage
         let collection <- create Collection()
         self.account.save(<-collection, to: self.CollectionStoragePath)
 
-        self.account.link<&SwirlMomentSBT.Collection{NonFungibleToken.CollectionPublic, SwirlMomentSBT.SwirlMomentSBTCollectionPublic, MetadataViews.ResolverCollection}>(
+        self.account.link<&SwirlNametag.Collection{NonFungibleToken.CollectionPublic, SwirlNametag.SwirlNametagCollectionPublic, MetadataViews.ResolverCollection}>(
             self.CollectionPublicPath,
             target: self.CollectionStoragePath
         )

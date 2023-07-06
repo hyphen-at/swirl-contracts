@@ -61,7 +61,7 @@
   },
   "deployments": {
     "testnet": {
-      "testnet-account": ["SwirlMomentSBT"]
+      "testnet-account": ["SwirlNametag"]
     }
   }
 }
