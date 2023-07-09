@@ -9,10 +9,10 @@ pub contract SwirlMoment: NonFungibleToken {
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
     pub event Deposit(id: UInt64, to: Address?)
+    pub event Log(str: String)
 
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
-    pub let MinterStoragePath: StoragePath
     pub let ProviderPrivatePath: PrivatePath
 
     pub struct Coordinate {
@@ -56,61 +56,75 @@ pub contract SwirlMoment: NonFungibleToken {
         }
     }
 
-    pub resource Minter {
-        pub fun mint(recipient: &{SwirlNametag.SwirlNametagCollectionPublic}, proofs: [ProofOfLocation]) {
-            pre {
-                proofs.length == 2 : "at least two peoples are required to swirl"
-                recipient.getIDs().length > 0 : "recipient must have at least one nametag"
+    /// Mints a new NFT. Proof-of-Location is required to mint moment
+    pub fun mint(proofs: [ProofOfLocation]) {
+        // validate swirl participants' messages
+        for proof in proofs {
+            // 0. resolve profile from the participant's SwirlNametag.
+            let collectionRef = proof.account
+                .getCapability(SwirlNametag.CollectionPublicPath)
+                .borrow<&{SwirlNametag.SwirlNametagCollectionPublic}>()
+                ?? panic("no SwirlNametag.Collection found: ".concat(proof.account.address.toString()))
+
+            let nametags = collectionRef.getIDs()
+            if nametags.length == 0 {
+                panic("no nametag found: ".concat(proof.account.address.toString()))
             }
-            let nametagIDs = recipient.getIDs()
-            let nametagNFT = recipient.borrowSwirlNametag(id: nametagIDs[0]) ?? panic("unable to borrow nametag")
-            let profile = nametagNFT.profile
+            let nametag = collectionRef.borrowSwirlNametag(id: nametags[0]) ?? panic("unable to borrow nametag")
+            let profile = nametag.profile
 
-            // validate swirl participants' messages
-            for proof in proofs {
-                // 1. ensure that nonce is up to date (to prevent signature replay attack)
-                if proof.nonce != SwirlMoment.nextNonceForProofOfLocation {
-                    panic("nonce mismatch: ".concat(proof.account.address.toString()))
-                }
-
-                // 2. verify that the message is signed correctly
-                let isValid = proof.signPubKey().publicKey.verify(
-                    signature: proof.signature.decodeHex(),
-                    signedData: proof.signedData(),
-                    domainSeparationTag: "",
-                    hashAlgorithm: HashAlgorithm.SHA2_256
-                )
-                if !isValid {
-                    panic("invalid signature: ".concat(proof.account.address.toString()))
-                }
-
-                // 3. make sure they're in a close location (<= 1km!)
-                // since we can't correctly calculate harversine distance in cadence,
-                // we use 0.00904372 degrees to approximate as 1km (without correcting the earth's curvature...)
-                if proofs[0].location.lat - proof.location.lat > 0.00904372 {
-                    panic("location too far: ".concat(proof.account.address.toString()))
-                }
-                if proofs[0].location.lng - proof.location.lng > 0.00904372 {
-                    panic("location too far: ".concat(proof.account.address.toString()))
-                }
-
-                // 4. mint!
-                self.mintNFT(recipient: recipient, profile: profile, location: proof.location,
-                )
+            // 1. ensure that nonce is up to date (to prevent signature replay attack)
+            if proof.nonce != SwirlMoment.nextNonceForProofOfLocation {
+                panic("nonce mismatch: ".concat(proof.account.address.toString()))
             }
-            SwirlMoment.nextNonceForProofOfLocation = SwirlMoment.nextNonceForProofOfLocation + 1
-        }
 
-        access(self) fun mintNFT(recipient: &{SwirlNametag.SwirlNametagCollectionPublic}, profile: SwirlNametag.Profile, location: Coordinate) {
-            // create a new NFT
-            var newNFT <- create NFT(
-                id: SwirlMoment.totalSupply,
-                profile: profile,
-                location: location,
+            // 2. verify that the message is signed correctly
+            let isValid = proof.signPubKey().publicKey.verify(
+                signature: proof.signature.decodeHex(),
+                signedData: proof.signedData(),
+                domainSeparationTag: "",
+                hashAlgorithm: HashAlgorithm.SHA3_256
             )
-            recipient.deposit(token: <-newNFT)
-            SwirlMoment.totalSupply = SwirlMoment.totalSupply + 1
+            // if !isValid {
+            //     panic("invalid signature: ".concat(proof.account.address.toString()))
+            // }
+
+            // 3. make sure they're in a close location (<= 1km!)
+            // since we can't correctly calculate harversine distance in cadence,
+            // we use 0.00904372 degrees to approximate as 1km (without correcting the earth's curvature...)
+            if self.abs(proofs[0].location.lat - proof.location.lat) > 0.00904372 {
+                panic("location too far: ".concat(proof.account.address.toString()))
+            }
+            if self.abs(proofs[0].location.lng - proof.location.lng) > 0.00904372 {
+                panic("location too far: ".concat(proof.account.address.toString()))
+            }
+
+            // 4. mint
+            let recipient = proof.account.getCapability(SwirlMoment.CollectionPublicPath)
+                .borrow<&{NonFungibleToken.CollectionPublic}>()
+                ?? panic("no SwirlMoment.Collection found: ".concat(proof.account.address.toString()))
+
+            self.mintNFT(recipient: recipient, profile: profile, location: proof.location)
         }
+        SwirlMoment.nextNonceForProofOfLocation = SwirlMoment.nextNonceForProofOfLocation + 1
+    }
+
+    priv fun abs(_ x: Fix64): Fix64 {
+        if x < 0.0 {
+            return -x
+        }
+        return x
+    }
+
+    priv fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, profile: SwirlNametag.Profile, location: Coordinate) {
+        // create a new NFT
+        var newNFT <- create NFT(
+            id: SwirlMoment.totalSupply,
+            profile: profile,
+            location: location,
+        )
+        recipient.deposit(token: <-newNFT)
+        SwirlMoment.totalSupply = SwirlMoment.totalSupply + 1
     }
 
     pub resource NFT: NonFungibleToken.INFT, MetadataViews.Resolver {
@@ -145,13 +159,6 @@ pub contract SwirlMoment: NonFungibleToken {
             return "Swirl Moment with ".concat(self.profile.nickname)
         }
 
-        /// Function that resolve the given GameMetadataView
-        ///
-        /// @param view: The Type of GameMetadataView to resolve
-        ///
-        /// @return The resolved GameMetadataView for this NFT with this NFT's
-        /// metadata or nil if none exists
-        ///
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
                 case Type<MetadataViews.Display>():
@@ -285,17 +292,12 @@ pub contract SwirlMoment: NonFungibleToken {
         return <- create Collection()
     }
 
-    pub fun createMinter(): @Minter {
-        return <- create Minter()
-    }
-
     init() {
         self.totalSupply = 0
         self.nextNonceForProofOfLocation = 0
 
         self.CollectionStoragePath = /storage/SwirlMomentCollection
         self.CollectionPublicPath = /public/SwirlMomentCollection
-        self.MinterStoragePath = /storage/SwirlMomentMinter
         self.ProviderPrivatePath = /private/SwirlNFTCollectionProvider
 
         // Create a Collection resource and save it to storage
@@ -306,9 +308,6 @@ pub contract SwirlMoment: NonFungibleToken {
             self.CollectionPublicPath,
             target: self.CollectionStoragePath
         )
-
-        let minter <- create Minter()
-        self.account.save(<-minter, to: self.MinterStoragePath)
 
         emit ContractInitialized()
     }
