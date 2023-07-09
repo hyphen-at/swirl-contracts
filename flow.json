@@ -1,5 +1,11 @@
 {
   "contracts": {
+    "SwirlMoment": {
+      "source": "./contracts/SwirlMoment.cdc"
+    },
+    "SwirlNametag": {
+      "source": "./contracts/SwirlNametag.cdc"
+    },
     "FlowToken": {
       "source": "./contracts/utility/FlowToken.cdc",
       "aliases": {
@@ -54,6 +60,13 @@
         "location": "./testnet-account.key"
       }
     },
+    "testnet-tester-account": {
+      "address": "0x86b14a8bc842bd9d",
+      "key": {
+        "type": "file",
+        "location": "./testnet-tester-account.key"
+      }
+    },
     "emulator-account": {
       "address": "f8d6e0586b0a20c7",
       "key": "e60bc0c9e0e0a9e50a0865eb47ecf493a49e83dd222e78a9fc0f88d6bdbd6c68"
@@ -61,7 +74,7 @@
   },
   "deployments": {
     "testnet": {
-      "testnet-account": ["SwirlNametag"]
+      "testnet-account": ["SwirlNametag", "SwirlMoment"]
     }
   }
 }
