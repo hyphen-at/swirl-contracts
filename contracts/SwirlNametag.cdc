@@ -46,7 +46,7 @@ pub contract SwirlNametag: NonFungibleToken {
 
     pub resource NFT: NonFungibleToken.INFT, MetadataViews.Resolver {
         pub let id: UInt64
-        pub let profile: Profile
+        pub var profile: Profile
 
         init(id: UInt64, profile: Profile) {
             self.id = id
@@ -122,6 +122,10 @@ pub contract SwirlNametag: NonFungibleToken {
                     return nil
             }
         }
+
+        access(contract) fun updateProfile(profile: Profile) {
+            self.profile = profile
+        }
     }
 
     pub resource interface SwirlNametagCollectionPublic {
@@ -184,6 +188,15 @@ pub contract SwirlNametag: NonFungibleToken {
             }
 
             return nil
+        }
+
+        pub fun updateSwirlNametag(profile: Profile) {
+            let tokenIDs = self.getIDs()
+            if tokenIDs.length == 0 {
+                panic("no nametags")
+            }
+            let nft = self.borrowSwirlNametag(id: tokenIDs[0]) ?? panic("cannot borrow nametag NFT")
+            nft.updateProfile(profile: profile)
         }
 
         pub fun borrowViewResolver(id: UInt64): &AnyResource{MetadataViews.Resolver} {
