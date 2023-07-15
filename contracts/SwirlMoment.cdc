@@ -161,6 +161,8 @@ pub contract SwirlMoment: NonFungibleToken {
 
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
+                case Type<SwirlNametag.Profile>():
+                    return self.profile
                 case Type<MetadataViews.Display>():
                     return MetadataViews.Display(
                         name: self.name(),
