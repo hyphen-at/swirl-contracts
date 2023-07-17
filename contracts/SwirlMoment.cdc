@@ -4,7 +4,7 @@ import SwirlNametag from "./SwirlNametag.cdc"
 
 pub contract SwirlMoment: NonFungibleToken {
     pub var totalSupply: UInt64
-    pub var nextNonceForProofOfLocation: UInt64
+    pub var nextNonceForProofOfMeeting: UInt64
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
@@ -25,7 +25,7 @@ pub contract SwirlMoment: NonFungibleToken {
         }
     }
 
-    pub struct ProofOfLocation {
+    pub struct ProofOfMeeting {
         pub let account: PublicAccount
         pub let location: Coordinate
 
@@ -57,7 +57,7 @@ pub contract SwirlMoment: NonFungibleToken {
     }
 
     /// Mints a new NFT. Proof-of-Location is required to mint moment
-    pub fun mint(proofs: [ProofOfLocation]) {
+    pub fun mint(proofs: [ProofOfMeeting]) {
         // validate swirl participants' messages
         for proof in proofs {
             // 0. resolve profile from the participant's SwirlNametag.
@@ -74,7 +74,7 @@ pub contract SwirlMoment: NonFungibleToken {
             let profile = nametag.profile
 
             // 1. ensure that nonce is up to date (to prevent signature replay attack)
-            if proof.nonce != SwirlMoment.nextNonceForProofOfLocation {
+            if proof.nonce != SwirlMoment.nextNonceForProofOfMeeting {
                 panic("nonce mismatch: ".concat(proof.account.address.toString()))
             }
 
@@ -106,7 +106,7 @@ pub contract SwirlMoment: NonFungibleToken {
 
             self.mintNFT(recipient: recipient, profile: profile, location: proof.location)
         }
-        SwirlMoment.nextNonceForProofOfLocation = SwirlMoment.nextNonceForProofOfLocation + 1
+        SwirlMoment.nextNonceForProofOfMeeting = SwirlMoment.nextNonceForProofOfMeeting + 1
     }
 
     priv fun abs(_ x: Fix64): Fix64 {
@@ -296,7 +296,7 @@ pub contract SwirlMoment: NonFungibleToken {
 
     init() {
         self.totalSupply = 0
-        self.nextNonceForProofOfLocation = 0
+        self.nextNonceForProofOfMeeting = 0
 
         self.CollectionStoragePath = /storage/SwirlMomentCollection
         self.CollectionPublicPath = /public/SwirlMomentCollection
