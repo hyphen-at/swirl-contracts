@@ -122,6 +122,7 @@ pub contract SwirlMoment: NonFungibleToken {
             id: SwirlMoment.totalSupply,
             profile: profile,
             location: location,
+            mintedAt: getCurrentBlock().timestamp,
         )
         recipient.deposit(token: <-newNFT)
         SwirlMoment.totalSupply = SwirlMoment.totalSupply + 1
@@ -137,10 +138,14 @@ pub contract SwirlMoment: NonFungibleToken {
         /// where you met
         pub let location: Coordinate
 
-        init(id: UInt64, profile: SwirlNametag.Profile, location: Coordinate) {
+        /// the time you met
+        pub let mintedAt: UFix64
+
+        init(id: UInt64, profile: SwirlNametag.Profile, location: Coordinate, mintedAt: UFix64) {
             self.id = id
             self.profile = profile
             self.location = location
+            self.mintedAt = mintedAt
         }
 
         pub fun getViews(): [Type] {
