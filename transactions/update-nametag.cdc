@@ -37,7 +37,7 @@ transaction(
         }
         if discordHandle != nil {
             socialHandles.append(SwirlNametag.SocialHandle(
-                type: "twitter",
+                type: "discord",
                 value: discordHandle!
             ))
         }
