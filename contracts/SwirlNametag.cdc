@@ -72,6 +72,15 @@ pub contract SwirlNametag: NonFungibleToken {
             return SwirlNametag.getProfile(self.id)
         }
 
+        pub fun profileImageUrl(): String {
+            let profile = self.profile()
+            var url = "https://swirl.deno.dev/dnft/nametag.svg?"
+            url = url.concat("nickname=").concat(profile.nickname)
+            url = url.concat("&profile_img=").concat(String.encodeHex(profile.profileImage.utf8))
+            url = url.concat("&color=").concat(String.encodeHex(profile.color.utf8))
+            return url
+        }
+
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
                 case Type<Profile>():
@@ -80,8 +89,8 @@ pub contract SwirlNametag: NonFungibleToken {
                 case Type<MetadataViews.Display>():
                     return MetadataViews.Display(
                         name: self.name(),
-                        description: "Swirl, the new way to meet degens IRL.",
-                        thumbnail: MetadataViews.HTTPFile(url: self.profile().profileImage)
+                        description: "Swirl, share your digital profiles as NFT and keep IRL moment with others.",
+                        thumbnail: MetadataViews.HTTPFile(url: self.profileImageUrl())
                     )
                 case Type<MetadataViews.Serial>():
                     return MetadataViews.Serial(
@@ -101,24 +110,32 @@ pub contract SwirlNametag: NonFungibleToken {
                     )
                 case Type<MetadataViews.NFTCollectionDisplay>():
                     let media = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
-                        mediaType: "image/png"
+                        file: MetadataViews.HTTPFile(url: self.profileImageUrl()),
+                        mediaType: "image/svg+xml"
                     )
+                    let socials: {String: MetadataViews.ExternalURL} = {}
+                    for handle in self.profile().socialHandles {
+                        socials[handle.channel] = MetadataViews.ExternalURL(handle.handle)
+                    }
 
-                    let bannerMedia = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
-                        mediaType: "image/png"
-                    )
                     return MetadataViews.NFTCollectionDisplay(
                         name: "Swirl Nametag",
-                        description: "The moment you met someone at IRL, saved on your wallet as SBT.",
+                        description: "Swirl, share your digital profiles as NFT and keep IRL moment with others.",
                         externalURL: MetadataViews.ExternalURL("https://hyphen.at/"),
                         squareImage: media,
-                        bannerImage: bannerMedia,
-                        socials: {}
+                        bannerImage: media,
+                        socials: socials,
                     )
                 case Type<MetadataViews.Traits>():
-                    let traitsView = MetadataViews.dictToTraits(dict: {}, excludedNames: [])
+                    let profile = self.profile()
+                    let traits: {String: AnyStruct} = {}
+                    traits["nickname"] = profile.nickname
+                    traits["keywords"] = profile.keywords
+                    traits["color"] = profile.color
+                    for handle in profile.socialHandles {
+                        traits[handle.channel] = handle.handle
+                    }
+                    let traitsView = MetadataViews.dictToTraits(dict: traits, excludedNames: [])
 
                     return traitsView
                 default:

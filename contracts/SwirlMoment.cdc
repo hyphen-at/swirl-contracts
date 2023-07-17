@@ -100,11 +100,16 @@ pub contract SwirlMoment: NonFungibleToken {
             }
 
             // 4. mint
-            let recipient = proof.account.getCapability(SwirlMoment.CollectionPublicPath)
-                .borrow<&{NonFungibleToken.CollectionPublic}>()
-                ?? panic("no SwirlMoment.Collection found: ".concat(proof.account.address.toString()))
+            for p in proofs {
+                if p.account.address == proof.account.address {
+                    continue
+                }
+                let recipient = p.account.getCapability(SwirlMoment.CollectionPublicPath)
+                    .borrow<&{NonFungibleToken.CollectionPublic}>()
+                    ?? panic("no SwirlMoment.Collection found: ".concat(proof.account.address.toString()))
 
-            self.mintNFT(recipient: recipient, nametagID: nametag.id, location: proof.location)
+                self.mintNFT(recipient: recipient, nametagID: nametag.id, location: proof.location)
+            }
         }
         SwirlMoment.nextNonceForProofOfMeeting = SwirlMoment.nextNonceForProofOfMeeting + 1
     }
@@ -168,6 +173,16 @@ pub contract SwirlMoment: NonFungibleToken {
             return "Swirl Moment with ".concat(self.profile().nickname)
         }
 
+        pub fun profileImageUrl(): String {
+            let profile = self.profile()
+            var url = "https://swirl.deno.dev/dnft/moment.svg?"
+            url = url.concat("nickname=").concat(profile.nickname)
+            url = url.concat("&profile_img=").concat(String.encodeHex(profile.profileImage.utf8))
+            url = url.concat("&color=").concat(String.encodeHex(profile.color.utf8))
+            url = url.concat("&met_at=").concat(self.mintedAt.toString())
+            return url
+        }
+
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
                 case Type<SwirlNametag.Profile>():
@@ -175,15 +190,15 @@ pub contract SwirlMoment: NonFungibleToken {
                 case Type<MetadataViews.Display>():
                     return MetadataViews.Display(
                         name: self.name(),
-                        description: "Swirl, the new way to meet degens IRL.",
-                        thumbnail: MetadataViews.HTTPFile(url: self.profile().profileImage),
+                        description: "Swirl, share your digital profiles as NFT and keep IRL moment with others.",
+                        thumbnail: MetadataViews.HTTPFile(url: self.profileImageUrl()),
                     )
                 case Type<MetadataViews.Serial>():
                     return MetadataViews.Serial(
                         self.id
                     )
                 case Type<MetadataViews.ExternalURL>():
-                    return MetadataViews.ExternalURL(self.profile().profileImage)
+                    return MetadataViews.ExternalURL(self.profileImageUrl())
 
                 case Type<MetadataViews.NFTCollectionData>():
                     return MetadataViews.NFTCollectionData(
@@ -199,24 +214,23 @@ pub contract SwirlMoment: NonFungibleToken {
                     )
                 case Type<MetadataViews.NFTCollectionDisplay>():
                     let media = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
-                        mediaType: "image/png"
-                    )
-
-                    let bannerMedia = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
-                        mediaType: "image/png"
+                        file: MetadataViews.HTTPFile(url: self.profileImageUrl()),
+                        mediaType: "image/svg+xml"
                     )
                     return MetadataViews.NFTCollectionDisplay(
                         name: "Swirl Moment",
-                        description: "The moment you met someone at IRL, saved on your wallet as SBT.",
+                        description: "Swirl, share your digital profiles as NFT and keep IRL moment with others.",
                         externalURL: MetadataViews.ExternalURL("https://hyphen.at/"),
                         squareImage: media,
-                        bannerImage: bannerMedia,
+                        bannerImage: media,
                         socials: {}
                     )
                 case Type<MetadataViews.Traits>():
-                    let traitsView = MetadataViews.dictToTraits(dict: {}, excludedNames: [])
+                    let traits: {String: AnyStruct} = {}
+                    traits["locationLat"] = self.location.lat
+                    traits["locationLng"] = self.location.lng
+                    traits["mintedAt"] = self.mintedAt
+                    let traitsView = MetadataViews.dictToTraits(dict: traits, excludedNames: [])
 
                     return traitsView
                 default:
@@ -249,6 +263,12 @@ pub contract SwirlMoment: NonFungibleToken {
         // withdraw removes an NFT from the collection and moves it to the caller
         pub fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
             panic("soulbound; SBT is not transferable")
+        }
+
+        pub fun burn(id: UInt64) {
+            let token <- self.ownedNFTs.remove(key: id) ?? panic("missing NFT")
+            emit Withdraw(id: token.id, from: self.owner?.address)
+            destroy token
         }
 
         // deposit takes an NFT and adds it to the collections dictionary
