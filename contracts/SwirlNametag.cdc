@@ -3,6 +3,7 @@ import MetadataViews from "./utility/MetadataViews.cdc"
 
 pub contract SwirlNametag: NonFungibleToken {
     pub var totalSupply: UInt64
+    priv let profiles: {UInt64: Profile}
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
@@ -46,11 +47,9 @@ pub contract SwirlNametag: NonFungibleToken {
 
     pub resource NFT: NonFungibleToken.INFT, MetadataViews.Resolver {
         pub let id: UInt64
-        pub var profile: Profile
 
-        init(id: UInt64, profile: Profile) {
+        init(id: UInt64) {
             self.id = id
-            self.profile = profile
         }
 
         pub fun getViews(): [Type] {
@@ -66,19 +65,23 @@ pub contract SwirlNametag: NonFungibleToken {
         }
 
         pub fun name(): String {
-            return "Swirl Nametag: ".concat(self.profile.nickname)
+            return "Swirl Nametag: ".concat(self.profile().nickname)
+        }
+
+        pub fun profile(): Profile {
+            return SwirlNametag.getProfile(self.id)
         }
 
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
                 case Type<Profile>():
-                    return self.profile
+                    return self.profile()
 
                 case Type<MetadataViews.Display>():
                     return MetadataViews.Display(
                         name: self.name(),
                         description: "Swirl, the new way to meet degens IRL.",
-                        thumbnail: MetadataViews.HTTPFile(url: self.profile.profileImage)
+                        thumbnail: MetadataViews.HTTPFile(url: self.profile().profileImage)
                     )
                 case Type<MetadataViews.Serial>():
                     return MetadataViews.Serial(
@@ -98,12 +101,12 @@ pub contract SwirlNametag: NonFungibleToken {
                     )
                 case Type<MetadataViews.NFTCollectionDisplay>():
                     let media = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile.profileImage),
+                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
                         mediaType: "image/png"
                     )
 
                     let bannerMedia = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile.profileImage),
+                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
                         mediaType: "image/png"
                     )
                     return MetadataViews.NFTCollectionDisplay(
@@ -121,10 +124,6 @@ pub contract SwirlNametag: NonFungibleToken {
                 default:
                     return nil
             }
-        }
-
-        access(contract) fun updateProfile(profile: Profile) {
-            self.profile = profile
         }
     }
 
@@ -195,8 +194,7 @@ pub contract SwirlNametag: NonFungibleToken {
             if tokenIDs.length == 0 {
                 panic("no nametags")
             }
-            let nft = self.borrowSwirlNametag(id: tokenIDs[0]) ?? panic("cannot borrow nametag NFT")
-            nft.updateProfile(profile: profile)
+            SwirlNametag.setProfile(tokenID: tokenIDs[0], profile: profile)
         }
 
         pub fun borrowViewResolver(id: UInt64): &AnyResource{MetadataViews.Resolver} {
@@ -210,6 +208,14 @@ pub contract SwirlNametag: NonFungibleToken {
         }
     }
 
+    pub fun getProfile(_ tokenID: UInt64): Profile {
+        return self.profiles[tokenID] ?? panic("no profile for token ID")
+    }
+
+    access(contract) fun setProfile(tokenID: UInt64, profile: Profile) {
+        self.profiles[tokenID] = profile
+    }
+
     // public function that anyone can call to create a new empty collection
     pub fun createEmptyCollection(): @NonFungibleToken.Collection {
         return <- create Collection()
@@ -217,16 +223,15 @@ pub contract SwirlNametag: NonFungibleToken {
 
     pub fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, profile: Profile) {
         // create a new NFT
-        var newNFT <- create NFT(
-            id: SwirlNametag.totalSupply + 1,
-            profile: profile
-        )
+        var newNFT <- create NFT(id: SwirlNametag.totalSupply + 1)
+        SwirlNametag.setProfile(tokenID: newNFT.id, profile: profile)
         recipient.deposit(token: <-newNFT)
         SwirlNametag.totalSupply = SwirlNametag.totalSupply + 1
     }
 
     init() {
         self.totalSupply = 0
+        self.profiles = {}
 
         self.CollectionStoragePath = /storage/SwirlNametagCollection
         self.CollectionPublicPath = /public/SwirlNametagCollection

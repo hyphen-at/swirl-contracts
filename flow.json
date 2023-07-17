@@ -54,16 +54,18 @@
   },
   "accounts": {
     "testnet-account": {
-      "address": "0xfe9604dcbf6b270e",
+      "address": "0x5969d51aa05825c4",
       "key": {
         "type": "file",
+        "hashAlgorithm": "SHA2_256",
         "location": "./testnet-account.key"
       }
     },
     "testnet-tester-account": {
-      "address": "0x86b14a8bc842bd9d",
+      "address": "0xb4eed2f80e039f9e",
       "key": {
         "type": "file",
+        "hashAlgorithm": "SHA2_256",
         "location": "./testnet-tester-account.key"
       }
     },

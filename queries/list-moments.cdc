@@ -22,9 +22,7 @@ pub fun main(address: Address): [MomentInfo] {
     if let collection = account.getCapability(SwirlMoment.CollectionPublicPath).borrow<&{SwirlMoment.SwirlMomentCollectionPublic}>() {
         for tokenID in collection.getIDs() {
             let nft = collection.borrowSwirlMoment(id: tokenID)!
-            let metadata = nft.resolveView(Type<SwirlNametag.Profile>())!
-
-            moments.append(MomentInfo(profile: nft.profile, location: nft.location, mintedAt: nft.mintedAt))
+            moments.append(MomentInfo(profile: nft.profile(), location: nft.location, mintedAt: nft.mintedAt))
         }
     }
     return moments

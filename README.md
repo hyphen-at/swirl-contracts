@@ -4,7 +4,16 @@ This repository contains contract codes of Swirl, a mobile nametag NFT sharing s
 
 It uses a special protocol called **Proof-of-Meeting** to verify that the participants are at the same time & location by signing their locations and exchange the signatures through Nearby Communication protocol.
 
-![Proof-of-Meeting](./docs/swirl-diagram.png)
+### Deployed Contracts
+
+Currently, the contracts are deployed only for the testnet.
+
+#### Testnet
+
+| Contract | Address |
+|---|---|
+| [`SwirlNametag`](./contracts/SwirlNametag.cdc) | `0x5969d51aa05825c4` |
+| [`SwirlMoment`](./contracts/SwirlMoment.cdc) | `0x5969d51aa05825c4` |
 
 ### Projects Structure
  * `contracts/`: contains contract code
@@ -17,6 +26,9 @@ It uses a special protocol called **Proof-of-Meeting** to verify that the partic
    * `mint-moment.cdc`: Mints a `SwirlMoment` by providing proof-of-meeting data.
    * `update-nametag.cdc`: Updates a user's profile info.
 
+
+### Proof-of-Meeting
+![Proof-of-Meeting](./docs/swirl-diagram.png)
 
 ## Getting Started
 

@@ -104,7 +104,7 @@ pub contract SwirlMoment: NonFungibleToken {
                 .borrow<&{NonFungibleToken.CollectionPublic}>()
                 ?? panic("no SwirlMoment.Collection found: ".concat(proof.account.address.toString()))
 
-            self.mintNFT(recipient: recipient, profile: profile, location: proof.location)
+            self.mintNFT(recipient: recipient, nametagID: nametag.id, location: proof.location)
         }
         SwirlMoment.nextNonceForProofOfMeeting = SwirlMoment.nextNonceForProofOfMeeting + 1
     }
@@ -116,11 +116,11 @@ pub contract SwirlMoment: NonFungibleToken {
         return x
     }
 
-    priv fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, profile: SwirlNametag.Profile, location: Coordinate) {
+    priv fun mintNFT(recipient: &{NonFungibleToken.CollectionPublic}, nametagID: UInt64, location: Coordinate) {
         // create a new NFT
         var newNFT <- create NFT(
             id: SwirlMoment.totalSupply,
-            profile: profile,
+            nametagID: nametagID,
             location: location,
             mintedAt: getCurrentBlock().timestamp,
         )
@@ -132,8 +132,8 @@ pub contract SwirlMoment: NonFungibleToken {
         /// the token ID
         pub let id: UInt64
 
-        /// the profile of the person you met
-        pub let profile: SwirlNametag.Profile
+        /// the token ID of the nametag, linked to the profile of the person you met
+        pub let nametagID: UInt64
 
         /// where you met
         pub let location: Coordinate
@@ -141,11 +141,15 @@ pub contract SwirlMoment: NonFungibleToken {
         /// the time you met
         pub let mintedAt: UFix64
 
-        init(id: UInt64, profile: SwirlNametag.Profile, location: Coordinate, mintedAt: UFix64) {
+        init(id: UInt64, nametagID: UInt64, location: Coordinate, mintedAt: UFix64) {
             self.id = id
-            self.profile = profile
+            self.nametagID = nametagID
             self.location = location
             self.mintedAt = mintedAt
+        }
+
+        pub fun profile(): SwirlNametag.Profile {
+            return SwirlNametag.getProfile(self.nametagID)
         }
 
         pub fun getViews(): [Type] {
@@ -161,25 +165,25 @@ pub contract SwirlMoment: NonFungibleToken {
         }
 
         pub fun name(): String {
-            return "Swirl Moment with ".concat(self.profile.nickname)
+            return "Swirl Moment with ".concat(self.profile().nickname)
         }
 
         pub fun resolveView(_ view: Type): AnyStruct? {
             switch view {
                 case Type<SwirlNametag.Profile>():
-                    return self.profile
+                    return self.profile()
                 case Type<MetadataViews.Display>():
                     return MetadataViews.Display(
                         name: self.name(),
                         description: "Swirl, the new way to meet degens IRL.",
-                        thumbnail: MetadataViews.HTTPFile(url: self.profile.profileImage),
+                        thumbnail: MetadataViews.HTTPFile(url: self.profile().profileImage),
                     )
                 case Type<MetadataViews.Serial>():
                     return MetadataViews.Serial(
                         self.id
                     )
                 case Type<MetadataViews.ExternalURL>():
-                    return MetadataViews.ExternalURL(self.profile.profileImage)
+                    return MetadataViews.ExternalURL(self.profile().profileImage)
 
                 case Type<MetadataViews.NFTCollectionData>():
                     return MetadataViews.NFTCollectionData(
@@ -195,12 +199,12 @@ pub contract SwirlMoment: NonFungibleToken {
                     )
                 case Type<MetadataViews.NFTCollectionDisplay>():
                     let media = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile.profileImage),
+                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
                         mediaType: "image/png"
                     )
 
                     let bannerMedia = MetadataViews.Media(
-                        file: MetadataViews.HTTPFile(url: self.profile.profileImage),
+                        file: MetadataViews.HTTPFile(url: self.profile().profileImage),
                         mediaType: "image/png"
                     )
                     return MetadataViews.NFTCollectionDisplay(
