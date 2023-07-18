@@ -83,11 +83,11 @@ pub contract SwirlMoment: NonFungibleToken {
                 signature: proof.signature.decodeHex(),
                 signedData: proof.signedData(),
                 domainSeparationTag: "",
-                hashAlgorithm: HashAlgorithm.SHA3_256
+                hashAlgorithm: HashAlgorithm.SHA2_256
             )
-            // if !isValid {
-            //     panic("invalid signature: ".concat(proof.account.address.toString()))
-            // }
+            if !isValid {
+                panic("invalid signature: ".concat(proof.account.address.toString()))
+            }
 
             // 3. make sure they're in a close location (<= 1km!)
             // since we can't correctly calculate harversine distance in cadence,
