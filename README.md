@@ -7,6 +7,7 @@ It uses a special protocol called **Proof-of-Meeting** to verify that the partic
 | Network | Address |
 |---|---|
 | Testnet | [`0x5969d51aa05825c4`](https://testnet.flowview.app/account/0x5969d51aa05825c4/contract) |
+| Mainnet | [`0xed00d8ac249ee4b6`](https://testnet.flowview.app/account/0xed00d8ac249ee4b6/contract) |
 
 ![Proof-of-Meeting](./docs/swirl-diagram.png)
 

@@ -10,7 +10,8 @@
       "source": "./contracts/utility/FlowToken.cdc",
       "aliases": {
         "emulator": "0x0ae53cb6e3f42a79",
-        "testnet": "0x7e60df042a9c0868"
+        "testnet": "0x7e60df042a9c0868",
+        "mainnet": "0x1654653399040a61"
       }
     },
     "FungibleToken": {
@@ -53,6 +54,13 @@
     "testnet": "access.devnet.nodes.onflow.org:9000"
   },
   "accounts": {
+    "mainnet-account": {
+      "address": "0xed00d8ac249ee4b6",
+      "key": {
+        "type": "file",
+        "location": "./mainnet-account.key"
+      }
+    },
     "testnet-account": {
       "address": "0x5969d51aa05825c4",
       "key": {
@@ -75,6 +83,9 @@
     }
   },
   "deployments": {
+    "mainnet": {
+      "mainnet-account": ["SwirlNametag", "SwirlMoment"]
+    },
     "testnet": {
       "testnet-account": ["SwirlNametag", "SwirlMoment"]
     }
